@@ -14,7 +14,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('workout_sessions')
-    .select('id, day_key, day_name, completed_at, notes')
+    .select('id, day_key, day_name, routine_id, completed_at, notes')
     .eq('user_id', user.id)
     .order('completed_at', { ascending: false });
 
@@ -37,9 +37,10 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { dayKey, dayName, exercises } = body as {
+  const { dayKey, dayName, routineId, exercises } = body as {
     dayKey: string;
     dayName: string;
+    routineId?: string;
     exercises: Record<string, Array<{ weight: string; reps: string }>>;
   };
 
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       day_key: dayKey,
       day_name: dayName,
+      routine_id: routineId || null,
     })
     .select()
     .single();

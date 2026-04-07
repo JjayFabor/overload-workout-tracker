@@ -15,6 +15,42 @@ export interface Day {
   exercises: Exercise[];
 }
 
+// New program types
+export interface Program {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Routine {
+  id: string;
+  program_id: string;
+  sort_order: number;
+  label: string;
+  short: string;
+  name: string;
+  accent: string;
+  exercises: RoutineExercise[];
+}
+
+export interface RoutineExercise {
+  id: string;
+  routine_id: string;
+  sort_order: number;
+  name: string;
+  sets: number;
+  reps: string;
+  rest_seconds: number;
+}
+
+export interface ProgramWithRoutines extends Program {
+  routines: Routine[];
+}
+
 export interface SetLog {
   id: string;
   session_id: string;
@@ -28,8 +64,9 @@ export interface SetLog {
 export interface WorkoutSession {
   id: string;
   user_id: string;
-  day_key: DayKey;
+  day_key: string;
   day_name: string;
+  routine_id: string | null;
   completed_at: string;
   notes: string | null;
 }

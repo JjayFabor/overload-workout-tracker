@@ -2,40 +2,54 @@
 
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { DAYS } from '@/lib/program';
-import { DayKey, SetInput } from '@/lib/types';
+import { SetInput, Routine, Exercise } from '@/lib/types';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CircleProgress } from '@/components/ui/CircleProgress';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { RestTimer } from '@/components/workout/RestTimer';
 import { useTimer, DEFAULT_REST_SECONDS } from '@/hooks/useTimer';
 import { useWorkoutLog } from '@/hooks/useWorkoutLog';
+import { routineToExercises, useActiveProgram } from '@/hooks/useActiveProgram';
 
 interface PageProps {
   params: Promise<{ dayKey: string }>;
 }
 
 export default function WorkoutPage({ params }: PageProps) {
-  const { dayKey } = use(params);
+  const { dayKey: routineId } = use(params);
   const router = useRouter();
-  const day = DAYS[dayKey as DayKey];
+  const { program } = useActiveProgram();
 
+  const [routine, setRoutine] = useState<Routine | null>(null);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [saving, setSaving] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
 
   const timer = useTimer();
-  const workoutLog = useWorkoutLog(day?.exercises || []);
+  const workoutLog = useWorkoutLog(exercises);
 
+  // Find routine from active program
+  useEffect(() => {
+    if (program) {
+      const found = program.routines.find((r) => r.id === routineId);
+      if (found) {
+        setRoutine(found);
+        setExercises(routineToExercises(found));
+      }
+    }
+  }, [program, routineId]);
+
+  // Fetch last weights for pre-fill
   useEffect(() => {
     async function fetchLastWeights() {
-      if (!day) return;
+      if (!routine || exercises.length === 0) return;
 
       try {
-        const res = await fetch(`/api/last-weights/${dayKey}`);
+        const res = await fetch(`/api/last-weights/${routineId}`);
         if (res.ok) {
           const lastWeights: Record<string, SetInput[]> = await res.json();
           if (Object.keys(lastWeights).length > 0) {
-            workoutLog.initializeFromLastSession(day.exercises, lastWeights);
+            workoutLog.initializeFromLastSession(exercises, lastWeights);
           }
         }
       } catch (err) {
@@ -45,19 +59,26 @@ export default function WorkoutPage({ params }: PageProps) {
 
     fetchLastWeights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dayKey]);
+  }, [routine?.id, exercises.length]);
 
-  if (!day) {
+  if (!program) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Invalid workout day</p>
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!routine) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-gray-500">Routine not found</p>
       </div>
     );
   }
 
   const handleSetComplete = (exerciseName: string, setIndex: number) => {
     workoutLog.markSetComplete(exerciseName, setIndex);
-    // Auto-start timer with default 3 minutes
     timer.start(DEFAULT_REST_SECONDS);
     setShowTimer(true);
   };
@@ -84,8 +105,9 @@ export default function WorkoutPage({ params }: PageProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dayKey,
-          dayName: day.name,
+          routineId: routine.id,
+          dayKey: routine.short.toLowerCase(),
+          dayName: routine.name,
           exercises: workoutLog.exerciseLogs,
         }),
       });
@@ -108,15 +130,15 @@ export default function WorkoutPage({ params }: PageProps) {
   return (
     <>
       <PageHeader
-        title={`${day.label} - ${day.name}`}
+        title={`${routine.label} - ${routine.name}`}
         showBack
-        accentColor={day.accent}
+        accentColor={routine.accent}
         rightElement={
           <CircleProgress
             progress={progress}
             size={40}
             strokeWidth={4}
-            color={day.accent}
+            color={routine.accent}
           >
             <span className="text-xs font-medium">{progress}%</span>
           </CircleProgress>
@@ -124,7 +146,7 @@ export default function WorkoutPage({ params }: PageProps) {
       />
 
       <div className="mx-auto max-w-lg space-y-4 px-4 py-4">
-        {day.exercises.map((exercise) => (
+        {exercises.map((exercise) => (
           <ExerciseCard
             key={exercise.name}
             exercise={exercise}
@@ -137,7 +159,7 @@ export default function WorkoutPage({ params }: PageProps) {
               handleSetComplete(exercise.name, setIndex)
             }
             onStartTimer={handleStartTimer}
-            accentColor={day.accent}
+            accentColor={routine.accent}
           />
         ))}
 
@@ -145,7 +167,7 @@ export default function WorkoutPage({ params }: PageProps) {
           onClick={handleFinishWorkout}
           disabled={saving || workoutLog.getCompletedSetsCount() === 0}
           className="w-full rounded-xl py-4 text-lg font-semibold text-white transition-opacity disabled:opacity-50"
-          style={{ backgroundColor: day.accent }}
+          style={{ backgroundColor: routine.accent }}
         >
           {saving ? 'Saving...' : 'Finish Workout'}
         </button>
@@ -158,7 +180,7 @@ export default function WorkoutPage({ params }: PageProps) {
           onSkip={handleTimerEnd}
           onDone={handleTimerEnd}
           onAdjustTime={handleAdjustTime}
-          accentColor={day.accent}
+          accentColor={routine.accent}
         />
       )}
     </>

@@ -16,12 +16,21 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Get all sessions for this day
-  const { data: sessions, error: sessionsError } = await supabase
+  // Try routine_id first (UUID), fall back to day_key (legacy)
+  const isUuid = dayKey.includes('-') && dayKey.length > 10;
+
+  let query = supabase
     .from('workout_sessions')
     .select('*')
-    .eq('user_id', user.id)
-    .eq('day_key', dayKey)
+    .eq('user_id', user.id);
+
+  if (isUuid) {
+    query = query.eq('routine_id', dayKey);
+  } else {
+    query = query.eq('day_key', dayKey);
+  }
+
+  const { data: sessions, error: sessionsError } = await query
     .order('completed_at', { ascending: true });
 
   if (sessionsError) {
