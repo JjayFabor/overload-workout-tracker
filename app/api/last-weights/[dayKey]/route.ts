@@ -20,23 +20,57 @@ export async function GET(
   // Try routine_id first (UUID), fall back to day_key (legacy)
   const isUuid = dayKey.includes('-') && dayKey.length > 10;
 
-  let query = supabase
-    .from('workout_sessions')
-    .select('id')
-    .eq('user_id', user.id);
+  let session: { id: string } | null = null;
 
   if (isUuid) {
-    query = query.eq('routine_id', dayKey);
+    // Try by routine_id
+    const { data } = await supabase
+      .from('workout_sessions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('routine_id', dayKey)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    session = data;
+
+    // Fall back to legacy sessions by day_name
+    if (!session) {
+      const { data: routine } = await supabase
+        .from('routines')
+        .select('name')
+        .eq('id', dayKey)
+        .single();
+
+      if (routine) {
+        const { data: legacySession } = await supabase
+          .from('workout_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('day_name', routine.name)
+          .is('routine_id', null)
+          .order('completed_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        session = legacySession;
+      }
+    }
   } else {
-    query = query.eq('day_key', dayKey);
+    const { data } = await supabase
+      .from('workout_sessions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('day_key', dayKey)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    session = data;
   }
 
-  const { data: session, error: sessionError } = await query
-    .order('completed_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (sessionError || !session) {
+  if (!session) {
     return NextResponse.json({});
   }
 

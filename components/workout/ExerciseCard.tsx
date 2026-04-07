@@ -11,6 +11,7 @@ interface ExerciseCardProps {
   onSetComplete: (setIndex: number) => void;
   onStartTimer: () => void;
   accentColor: string;
+  weightUnit?: string;
 }
 
 export function ExerciseCard({
@@ -21,6 +22,7 @@ export function ExerciseCard({
   onSetComplete,
   onStartTimer,
   accentColor,
+  weightUnit = 'kg',
 }: ExerciseCardProps) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -46,6 +48,7 @@ export function ExerciseCard({
             onComplete={() => onSetComplete(idx)}
             isComplete={completedSets[idx] || false}
             accentColor={accentColor}
+            weightUnit={weightUnit}
           />
         ))}
       </div>

@@ -42,7 +42,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icons/overload-logo.png" />
       </head>
       <body className="min-h-full bg-gray-50 font-sans">{children}</body>
     </html>

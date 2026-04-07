@@ -19,19 +19,55 @@ export async function GET(
   // Try routine_id first (UUID), fall back to day_key (legacy)
   const isUuid = dayKey.includes('-') && dayKey.length > 10;
 
-  let query = supabase
-    .from('workout_sessions')
-    .select('*')
-    .eq('user_id', user.id);
+  let sessions: Record<string, unknown>[] | null = null;
+  let sessionsError: { message: string } | null = null;
 
   if (isUuid) {
-    query = query.eq('routine_id', dayKey);
-  } else {
-    query = query.eq('day_key', dayKey);
-  }
+    // First try by routine_id
+    const result = await supabase
+      .from('workout_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('routine_id', dayKey)
+      .order('completed_at', { ascending: true });
 
-  const { data: sessions, error: sessionsError } = await query
-    .order('completed_at', { ascending: true });
+    sessions = result.data;
+    sessionsError = result.error;
+
+    // If no results, also look for legacy sessions by day_name
+    // (sessions created before the programs feature)
+    if (!sessions || sessions.length === 0) {
+      // Get the routine's name to match legacy sessions
+      const { data: routine } = await supabase
+        .from('routines')
+        .select('name')
+        .eq('id', dayKey)
+        .single();
+
+      if (routine) {
+        const legacyResult = await supabase
+          .from('workout_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('day_name', routine.name)
+          .is('routine_id', null)
+          .order('completed_at', { ascending: true });
+
+        sessions = legacyResult.data;
+        sessionsError = legacyResult.error;
+      }
+    }
+  } else {
+    const result = await supabase
+      .from('workout_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('day_key', dayKey)
+      .order('completed_at', { ascending: true });
+
+    sessions = result.data;
+    sessionsError = result.error;
+  }
 
   if (sessionsError) {
     return NextResponse.json({ error: sessionsError.message }, { status: 500 });

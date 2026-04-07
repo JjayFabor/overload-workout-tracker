@@ -10,6 +10,7 @@ import { RestTimer } from '@/components/workout/RestTimer';
 import { useTimer, DEFAULT_REST_SECONDS } from '@/hooks/useTimer';
 import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 import { routineToExercises, useActiveProgram } from '@/hooks/useActiveProgram';
+import { useWeightUnit, inputToKg, kgToDisplay } from '@/hooks/useWeightUnit';
 
 interface PageProps {
   params: Promise<{ dayKey: string }>;
@@ -24,6 +25,7 @@ export default function WorkoutPage({ params }: PageProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [saving, setSaving] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
+  const { unit } = useWeightUnit();
 
   const timer = useTimer();
   const workoutLog = useWorkoutLog(exercises);
@@ -49,7 +51,15 @@ export default function WorkoutPage({ params }: PageProps) {
         if (res.ok) {
           const lastWeights: Record<string, SetInput[]> = await res.json();
           if (Object.keys(lastWeights).length > 0) {
-            workoutLog.initializeFromLastSession(exercises, lastWeights);
+            // Convert kg values to display unit for pre-fill
+            const converted: Record<string, SetInput[]> = {};
+            for (const [name, sets] of Object.entries(lastWeights)) {
+              converted[name] = sets.map((s) => ({
+                weight: kgToDisplay(s.weight, unit),
+                reps: '',
+              }));
+            }
+            workoutLog.initializeFromLastSession(exercises, converted);
           }
         }
       } catch (err) {
@@ -108,7 +118,15 @@ export default function WorkoutPage({ params }: PageProps) {
           routineId: routine.id,
           dayKey: routine.short.toLowerCase(),
           dayName: routine.name,
-          exercises: workoutLog.exerciseLogs,
+          exercises: Object.fromEntries(
+            Object.entries(workoutLog.exerciseLogs).map(([name, sets]) => [
+              name,
+              sets.map((s) => ({
+                weight: inputToKg(s.weight, unit),
+                reps: s.reps,
+              })),
+            ])
+          ),
         }),
       });
 
@@ -160,6 +178,7 @@ export default function WorkoutPage({ params }: PageProps) {
             }
             onStartTimer={handleStartTimer}
             accentColor={routine.accent}
+            weightUnit={unit}
           />
         ))}
 

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { DAYS } from '@/lib/program';
-import { DayKey, WorkoutSessionWithSets } from '@/lib/types';
+import { WorkoutSessionWithSets } from '@/lib/types';
 import { formatDate, calculateVolume, groupSetsByExercise } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useWeightUnit, displayWeight } from '@/hooks/useWeightUnit';
+import { useActiveProgram } from '@/hooks/useActiveProgram';
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
@@ -14,6 +15,8 @@ export default function SessionDetailPage({ params }: PageProps) {
   const { sessionId } = use(params);
   const [session, setSession] = useState<WorkoutSessionWithSets | null>(null);
   const [loading, setLoading] = useState(true);
+  const { unit } = useWeightUnit();
+  const { program } = useActiveProgram();
 
   useEffect(() => {
     async function fetchSession() {
@@ -55,16 +58,21 @@ export default function SessionDetailPage({ params }: PageProps) {
     );
   }
 
-  const day = DAYS[session.day_key as DayKey];
+  const routine = program?.routines.find((r) => r.id === session.routine_id);
+  const accent = routine?.accent || '#7F77DD';
+  const short = routine?.short || session.day_name?.charAt(0) || '?';
   const setsByExercise = groupSetsByExercise(session.set_logs);
-  const totalVolume = calculateVolume(session.set_logs);
+  const totalVolumeKg = calculateVolume(session.set_logs);
+  const totalVolumeDisplay = unit === 'lbs'
+    ? (totalVolumeKg * 2.20462).toFixed(0)
+    : totalVolumeKg.toLocaleString();
 
   return (
     <>
       <PageHeader
         title={`${session.day_name}`}
         showBack
-        accentColor={day?.accent}
+        accentColor={accent}
       />
 
       <div className="mx-auto max-w-lg px-4 py-4">
@@ -75,15 +83,15 @@ export default function SessionDetailPage({ params }: PageProps) {
                 {formatDate(session.completed_at)}
               </p>
               <p className="mt-1 text-2xl font-bold text-gray-900">
-                {totalVolume.toLocaleString()} kg
+                {totalVolumeDisplay} {unit}
               </p>
               <p className="text-sm text-gray-500">Total Volume</p>
             </div>
             <div
               className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white"
-              style={{ backgroundColor: day?.accent || '#7F77DD' }}
+              style={{ backgroundColor: accent }}
             >
-              {day?.short}
+              {short}
             </div>
           </div>
         </div>
@@ -92,7 +100,10 @@ export default function SessionDetailPage({ params }: PageProps) {
 
         <div className="space-y-4">
           {Object.entries(setsByExercise).map(([exerciseName, sets]) => {
-            const exerciseVolume = calculateVolume(sets);
+            const exerciseVolumeKg = calculateVolume(sets);
+            const exerciseVolumeDisplay = unit === 'lbs'
+              ? (exerciseVolumeKg * 2.20462).toFixed(0)
+              : exerciseVolumeKg.toLocaleString();
 
             return (
               <div
@@ -102,7 +113,7 @@ export default function SessionDetailPage({ params }: PageProps) {
                 <div className="mb-3 flex items-start justify-between">
                   <h3 className="font-medium text-gray-900">{exerciseName}</h3>
                   <span className="text-sm text-gray-500">
-                    {exerciseVolume.toLocaleString()} kg
+                    {exerciseVolumeDisplay} {unit}
                   </span>
                 </div>
 
@@ -116,7 +127,7 @@ export default function SessionDetailPage({ params }: PageProps) {
                         {set.set_number}
                       </span>
                       <span className="text-gray-900">
-                        {set.weight_kg} kg × {set.reps} reps
+                        {displayWeight(set.weight_kg, unit)} {unit} × {set.reps} reps
                       </span>
                     </div>
                   ))}

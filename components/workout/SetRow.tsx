@@ -10,6 +10,7 @@ interface SetRowProps {
   onComplete: () => void;
   isComplete: boolean;
   accentColor: string;
+  weightUnit?: string;
 }
 
 export function SetRow({
@@ -22,6 +23,7 @@ export function SetRow({
   onComplete,
   isComplete,
   accentColor,
+  weightUnit = 'kg',
 }: SetRowProps) {
   const handleBlur = () => {
     if (weight && reps && !isComplete) {
@@ -58,7 +60,7 @@ export function SetRow({
           <input
             type="number"
             inputMode="decimal"
-            placeholder="kg"
+            placeholder={weightUnit}
             value={weight}
             onChange={(e) => onWeightChange(e.target.value)}
             onBlur={handleBlur}
