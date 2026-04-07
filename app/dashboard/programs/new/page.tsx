@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { V_TAPER_TEMPLATE, ACCENT_COLORS } from '@/lib/program';
+import { V_TAPER_TEMPLATE, ACCENT_COLORS, DAY_OPTIONS } from '@/lib/program';
 
 interface RoutineForm {
   label: string;
@@ -159,13 +159,21 @@ export default function NewProgramPage() {
             >
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex flex-1 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Label (e.g. Monday)"
+                  <select
                     value={routine.label}
-                    onChange={(e) => updateRoutine(rIdx, 'label', e.target.value)}
+                    onChange={(e) => {
+                      const day = DAY_OPTIONS.find((d) => d.label === e.target.value);
+                      if (day) {
+                        updateRoutine(rIdx, 'label', day.label);
+                        updateRoutine(rIdx, 'short', day.short);
+                      }
+                    }}
                     className="w-1/3 rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#7F77DD] focus:outline-none"
-                  />
+                  >
+                    {DAY_OPTIONS.map((day) => (
+                      <option key={day.label} value={day.label}>{day.label}</option>
+                    ))}
+                  </select>
                   <input
                     type="text"
                     placeholder="Name (e.g. Push)"

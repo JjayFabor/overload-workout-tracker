@@ -86,3 +86,14 @@ export const ACCENT_COLORS = [
   '#7F77DD', '#1D9E75', '#D85A30', '#185FA5', '#BA7517',
   '#E24B4A', '#8B5CF6', '#06B6D4', '#EC4899', '#84CC16',
 ];
+
+// Day options for dropdown
+export const DAY_OPTIONS: { label: string; short: string }[] = [
+  { label: 'Monday', short: 'Mon' },
+  { label: 'Tuesday', short: 'Tue' },
+  { label: 'Wednesday', short: 'Wed' },
+  { label: 'Thursday', short: 'Thu' },
+  { label: 'Friday', short: 'Fri' },
+  { label: 'Saturday', short: 'Sat' },
+  { label: 'Sunday', short: 'Sun' },
+];

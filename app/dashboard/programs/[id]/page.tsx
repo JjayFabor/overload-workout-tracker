@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProgramWithRoutines } from '@/lib/types';
-import { ACCENT_COLORS } from '@/lib/program';
+import { ACCENT_COLORS, DAY_OPTIONS } from '@/lib/program';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface ExerciseForm {
@@ -247,20 +247,21 @@ export default function EditProgramPage({ params }: PageProps) {
             >
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex flex-1 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Label (e.g. Monday)"
+                  <select
                     value={routine.label}
-                    onChange={(e) => updateRoutine(rIdx, 'label', e.target.value)}
+                    onChange={(e) => {
+                      const day = DAY_OPTIONS.find((d) => d.label === e.target.value);
+                      if (day) {
+                        updateRoutine(rIdx, 'label', day.label);
+                        updateRoutine(rIdx, 'short', day.short);
+                      }
+                    }}
                     className="w-1/3 rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#7F77DD] focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Short (e.g. Mon)"
-                    value={routine.short}
-                    onChange={(e) => updateRoutine(rIdx, 'short', e.target.value)}
-                    className="w-16 rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#7F77DD] focus:outline-none"
-                  />
+                  >
+                    {DAY_OPTIONS.map((day) => (
+                      <option key={day.label} value={day.label}>{day.label}</option>
+                    ))}
+                  </select>
                   <input
                     type="text"
                     placeholder="Name (e.g. Push)"
