@@ -1,8 +1,9 @@
 'use client';
 
-import { SetLog, WorkoutSessionWithSets } from '@/lib/types';
+import { WorkoutSessionWithSets } from '@/lib/types';
 import { formatDate, bestWeight, bestRepsAtWeight, getTrendArrow } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
+import { WeightChart } from './WeightChart';
 
 interface ExerciseHistoryProps {
   exerciseName: string;
@@ -41,6 +42,15 @@ export function ExerciseHistory({
   );
   const isImproving = lastBestWeight > firstBestWeight;
 
+  // Chart data: best weight per session
+  const chartData = exerciseSessions.map((item) => {
+    const date = new Date(item.session.completed_at);
+    return {
+      label: date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }),
+      value: bestWeight(item.sets),
+    };
+  });
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="mb-3 flex items-start justify-between">
@@ -49,6 +59,13 @@ export function ExerciseHistory({
           {isImproving ? 'Improving' : 'Plateau'}
         </Badge>
       </div>
+
+      {/* Weight progression chart */}
+      {chartData.length >= 2 && (
+        <div className="mb-4">
+          <WeightChart data={chartData} accentColor={accentColor} />
+        </div>
+      )}
 
       <div className="space-y-3">
         {exerciseSessions.map((item, idx) => {
