@@ -8,13 +8,11 @@ import { formatDate, isWithinLastWeek } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { createClient } from '@/lib/supabase/client';
 import { useActiveProgram } from '@/hooks/useActiveProgram';
-import { useWeightUnit } from '@/hooks/useWeightUnit';
 
 export default function DashboardPage() {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const { program, loading: programLoading } = useActiveProgram();
-  const { unit, toggleUnit } = useWeightUnit();
   const router = useRouter();
 
   const supabase = useMemo(() => {
@@ -63,12 +61,6 @@ export default function DashboardPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Workout</h1>
         <div className="flex items-center gap-2">
-          <button
-            onClick={toggleUnit}
-            className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-bold text-gray-600 hover:bg-gray-100"
-          >
-            {unit.toUpperCase()}
-          </button>
           <Link
             href="/dashboard/programs"
             className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700"

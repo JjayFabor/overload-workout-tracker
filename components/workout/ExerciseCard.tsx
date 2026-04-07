@@ -2,6 +2,7 @@
 
 import { Exercise, SetInput } from '@/lib/types';
 import { SetRow } from './SetRow';
+import { WeightUnit } from '@/hooks/useWeightUnit';
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -11,7 +12,8 @@ interface ExerciseCardProps {
   onSetComplete: (setIndex: number) => void;
   onStartTimer: () => void;
   accentColor: string;
-  weightUnit?: string;
+  exerciseUnit: WeightUnit;
+  onToggleUnit: () => void;
 }
 
 export function ExerciseCard({
@@ -22,7 +24,8 @@ export function ExerciseCard({
   onSetComplete,
   onStartTimer,
   accentColor,
-  weightUnit = 'kg',
+  exerciseUnit,
+  onToggleUnit,
 }: ExerciseCardProps) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -33,6 +36,12 @@ export function ExerciseCard({
             {exercise.sets} sets × {exercise.reps}
           </p>
         </div>
+        <button
+          onClick={onToggleUnit}
+          className="rounded-md border border-gray-200 px-2 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-50"
+        >
+          {exerciseUnit.toUpperCase()}
+        </button>
       </div>
 
       <div className="space-y-2">
@@ -48,7 +57,7 @@ export function ExerciseCard({
             onComplete={() => onSetComplete(idx)}
             isComplete={completedSets[idx] || false}
             accentColor={accentColor}
-            weightUnit={weightUnit}
+            weightUnit={exerciseUnit}
           />
         ))}
       </div>

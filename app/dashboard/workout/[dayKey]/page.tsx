@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { SetInput, Routine, Exercise } from '@/lib/types';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -10,7 +10,7 @@ import { RestTimer } from '@/components/workout/RestTimer';
 import { useTimer, DEFAULT_REST_SECONDS } from '@/hooks/useTimer';
 import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 import { routineToExercises, useActiveProgram } from '@/hooks/useActiveProgram';
-import { useWeightUnit, inputToKg, kgToDisplay } from '@/hooks/useWeightUnit';
+import { WeightUnit, inputToKg, kgToDisplay } from '@/hooks/useWeightUnit';
 
 interface PageProps {
   params: Promise<{ dayKey: string }>;
@@ -25,10 +25,37 @@ export default function WorkoutPage({ params }: PageProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [saving, setSaving] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
-  const { unit } = useWeightUnit();
+
+  // Per-exercise unit state: defaults to kg, persisted in localStorage
+  const [exerciseUnits, setExerciseUnits] = useState<Record<string, WeightUnit>>({} as Record<string, WeightUnit>);
 
   const timer = useTimer();
   const workoutLog = useWorkoutLog(exercises);
+
+  // Load per-exercise unit preferences from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('exercise_units');
+    if (saved) {
+      try {
+        setExerciseUnits(JSON.parse(saved));
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  const getExerciseUnit = useCallback(
+    (name: string): WeightUnit => exerciseUnits[name] || 'kg',
+    [exerciseUnits]
+  );
+
+  const toggleExerciseUnit = useCallback((name: string) => {
+    setExerciseUnits((prev) => {
+      const current: WeightUnit = prev[name] || 'kg';
+      const next: WeightUnit = current === 'kg' ? 'lbs' : 'kg';
+      const updated: Record<string, WeightUnit> = { ...prev, [name]: next };
+      localStorage.setItem('exercise_units', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   // Find routine from active program
   useEffect(() => {
@@ -51,11 +78,12 @@ export default function WorkoutPage({ params }: PageProps) {
         if (res.ok) {
           const lastWeights: Record<string, SetInput[]> = await res.json();
           if (Object.keys(lastWeights).length > 0) {
-            // Convert kg values to display unit for pre-fill
+            // Convert kg values to each exercise's display unit
             const converted: Record<string, SetInput[]> = {};
             for (const [name, sets] of Object.entries(lastWeights)) {
+              const exUnit = exerciseUnits[name] || 'kg';
               converted[name] = sets.map((s) => ({
-                weight: kgToDisplay(s.weight, unit),
+                weight: kgToDisplay(s.weight, exUnit),
                 reps: '',
               }));
             }
@@ -122,7 +150,7 @@ export default function WorkoutPage({ params }: PageProps) {
             Object.entries(workoutLog.exerciseLogs).map(([name, sets]) => [
               name,
               sets.map((s) => ({
-                weight: inputToKg(s.weight, unit),
+                weight: inputToKg(s.weight, getExerciseUnit(name)),
                 reps: s.reps,
               })),
             ])
@@ -178,7 +206,8 @@ export default function WorkoutPage({ params }: PageProps) {
             }
             onStartTimer={handleStartTimer}
             accentColor={routine.accent}
-            weightUnit={unit}
+            exerciseUnit={getExerciseUnit(exercise.name)}
+            onToggleUnit={() => toggleExerciseUnit(exercise.name)}
           />
         ))}
 
