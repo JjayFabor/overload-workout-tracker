@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/home/jjay/JjayFiles/personal/workout-tracker/app/api/sessions"
+    ]
+  }
+}
