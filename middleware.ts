@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const ALLOWED_EMAILS = ['faborjaylordvhan@gmail.com'];
+  const ALLOWED_EMAILS = ['faborjaylordvhan@gmail.com', 'sarojkumartamang685@gmail.com'];
 
   const {
     data: { user },
