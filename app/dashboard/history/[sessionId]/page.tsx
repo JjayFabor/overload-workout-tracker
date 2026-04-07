@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { use } from 'react';
+import useSWR from 'swr';
 import { WorkoutSessionWithSets } from '@/lib/types';
 import { formatDate, calculateVolume, groupSetsByExercise } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useWeightUnit, displayWeight } from '@/hooks/useWeightUnit';
 import { useActiveProgram } from '@/hooks/useActiveProgram';
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
@@ -13,28 +16,13 @@ interface PageProps {
 
 export default function SessionDetailPage({ params }: PageProps) {
   const { sessionId } = use(params);
-  const [session, setSession] = useState<WorkoutSessionWithSets | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, isLoading: loading } = useSWR<WorkoutSessionWithSets>(
+    `/api/sessions/${sessionId}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
   const { unit } = useWeightUnit();
   const { program } = useActiveProgram();
-
-  useEffect(() => {
-    async function fetchSession() {
-      try {
-        const res = await fetch(`/api/sessions/${sessionId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setSession(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch session:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchSession();
-  }, [sessionId]);
 
   if (loading) {
     return (

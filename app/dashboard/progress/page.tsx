@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { WorkoutSessionWithSets, Routine } from '@/lib/types';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ExerciseHistory } from '@/components/progress/ExerciseHistory';
 import { useActiveProgram } from '@/hooks/useActiveProgram';
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 export default function ProgressPage() {
   const { program, loading: programLoading } = useActiveProgram();
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<WorkoutSessionWithSets[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Select first routine by default
   useEffect(() => {
@@ -19,28 +20,16 @@ export default function ProgressPage() {
     }
   }, [program, selectedRoutineId]);
 
+  // SWR fetches progress data - key changes when selectedRoutineId changes
+  const { data: sessions = [], isLoading } = useSWR<WorkoutSessionWithSets[]>(
+    selectedRoutineId ? `/api/progress/${selectedRoutineId}` : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 }
+  );
+
   const selectedRoutine: Routine | undefined = program?.routines.find(
     (r) => r.id === selectedRoutineId
   );
-
-  const fetchProgress = useCallback(async () => {
-    if (!selectedRoutineId) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/progress/${selectedRoutineId}`);
-      if (res.ok) {
-        setSessions(await res.json());
-      }
-    } catch (err) {
-      console.error('Failed to fetch progress:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedRoutineId]);
-
-  useEffect(() => {
-    fetchProgress();
-  }, [fetchProgress]);
 
   return (
     <>
@@ -53,7 +42,6 @@ export default function ProgressPage() {
           <p className="text-center text-gray-500">No active program</p>
         ) : (
           <>
-            {/* Routine selector */}
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {program.routines.map((routine) => {
                 const isSelected = selectedRoutineId === routine.id;
@@ -75,7 +63,7 @@ export default function ProgressPage() {
             </div>
 
             <div className="mt-6 space-y-4">
-              {loading ? (
+              {isLoading ? (
                 <p className="text-center text-gray-500">Loading...</p>
               ) : sessions.length === 0 ? (
                 <p className="text-center text-gray-500">

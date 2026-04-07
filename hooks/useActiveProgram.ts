@@ -1,32 +1,49 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useContext } from 'react';
+import useSWR from 'swr';
 import { ProgramWithRoutines, Routine, Exercise } from '@/lib/types';
 
-export function useActiveProgram() {
-  const [program, setProgram] = useState<ProgramWithRoutines | null>(null);
-  const [loading, setLoading] = useState(true);
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-  const fetchProgram = useCallback(async () => {
-    try {
-      const res = await fetch('/api/programs');
-      if (res.ok) {
-        const programs: ProgramWithRoutines[] = await res.json();
-        const active = programs.find((p) => p.is_active) || programs[0] || null;
-        setProgram(active);
-      }
-    } catch (err) {
-      console.error('Failed to fetch programs:', err);
-    } finally {
-      setLoading(false);
+// Context for sharing program data across all dashboard pages
+interface ProgramContextValue {
+  program: ProgramWithRoutines | null;
+  loading: boolean;
+  refetch: () => void;
+}
+
+export const ProgramContext = createContext<ProgramContextValue>({
+  program: null,
+  loading: true,
+  refetch: () => {},
+});
+
+// Provider hook - used ONLY in dashboard layout
+export function useProgramProvider(): ProgramContextValue {
+  const { data, isLoading, mutate } = useSWR<ProgramWithRoutines[]>(
+    '/api/programs',
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000, // Dedupe requests within 60s
     }
-  }, []);
+  );
 
-  useEffect(() => {
-    fetchProgram();
-  }, [fetchProgram]);
+  const program = data
+    ? data.find((p) => p.is_active) || data[0] || null
+    : null;
 
-  return { program, loading, refetch: fetchProgram };
+  return {
+    program,
+    loading: isLoading,
+    refetch: () => mutate(),
+  };
+}
+
+// Consumer hook - used in all dashboard pages
+export function useActiveProgram(): ProgramContextValue {
+  return useContext(ProgramContext);
 }
 
 // Convert a Routine's exercises to the Exercise interface used by workout components

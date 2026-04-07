@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, useMemo, use } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { SetInput, Routine, Exercise } from '@/lib/types';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CircleProgress } from '@/components/ui/CircleProgress';
@@ -12,6 +13,8 @@ import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 import { routineToExercises, useActiveProgram } from '@/hooks/useActiveProgram';
 import { WeightUnit, inputToKg, kgToDisplay } from '@/hooks/useWeightUnit';
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 interface PageProps {
   params: Promise<{ dayKey: string }>;
 }
@@ -21,15 +24,31 @@ export default function WorkoutPage({ params }: PageProps) {
   const router = useRouter();
   const { program } = useActiveProgram();
 
-  const [routine, setRoutine] = useState<Routine | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  // Fetch last weights in parallel with program (no waterfall!)
+  const { data: lastWeightsData } = useSWR<Record<string, SetInput[]>>(
+    `/api/last-weights/${routineId}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
   const [saving, setSaving] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
-
-  // Per-exercise unit state: defaults to kg, persisted in localStorage
   const [exerciseUnits, setExerciseUnits] = useState<Record<string, WeightUnit>>({} as Record<string, WeightUnit>);
+  const [prefilled, setPrefilled] = useState(false);
 
   const timer = useTimer();
+
+  // Derive routine and exercises from program context (no extra fetch)
+  const routine: Routine | null = useMemo(() => {
+    if (!program) return null;
+    return program.routines.find((r) => r.id === routineId) || null;
+  }, [program, routineId]);
+
+  const exercises: Exercise[] = useMemo(() => {
+    if (!routine) return [];
+    return routineToExercises(routine);
+  }, [routine]);
+
   const workoutLog = useWorkoutLog(exercises);
 
   // Load per-exercise unit preferences from localStorage
@@ -41,6 +60,24 @@ export default function WorkoutPage({ params }: PageProps) {
       } catch { /* ignore */ }
     }
   }, []);
+
+  // Pre-fill when both exercises and lastWeights are ready (runs once)
+  useEffect(() => {
+    if (prefilled || !lastWeightsData || exercises.length === 0) return;
+    if (Object.keys(lastWeightsData).length > 0) {
+      const converted: Record<string, SetInput[]> = {};
+      for (const [name, sets] of Object.entries(lastWeightsData)) {
+        const exUnit = exerciseUnits[name] || 'kg';
+        converted[name] = sets.map((s) => ({
+          weight: kgToDisplay(s.weight, exUnit),
+          reps: '',
+        }));
+      }
+      workoutLog.initializeFromLastSession(exercises, converted);
+    }
+    setPrefilled(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastWeightsData, exercises.length, prefilled]);
 
   const getExerciseUnit = useCallback(
     (name: string): WeightUnit => exerciseUnits[name] || 'kg',
@@ -56,48 +93,6 @@ export default function WorkoutPage({ params }: PageProps) {
       return updated;
     });
   }, []);
-
-  // Find routine from active program
-  useEffect(() => {
-    if (program) {
-      const found = program.routines.find((r) => r.id === routineId);
-      if (found) {
-        setRoutine(found);
-        setExercises(routineToExercises(found));
-      }
-    }
-  }, [program, routineId]);
-
-  // Fetch last weights for pre-fill
-  useEffect(() => {
-    async function fetchLastWeights() {
-      if (!routine || exercises.length === 0) return;
-
-      try {
-        const res = await fetch(`/api/last-weights/${routineId}`);
-        if (res.ok) {
-          const lastWeights: Record<string, SetInput[]> = await res.json();
-          if (Object.keys(lastWeights).length > 0) {
-            // Convert kg values to each exercise's display unit
-            const converted: Record<string, SetInput[]> = {};
-            for (const [name, sets] of Object.entries(lastWeights)) {
-              const exUnit = exerciseUnits[name] || 'kg';
-              converted[name] = sets.map((s) => ({
-                weight: kgToDisplay(s.weight, exUnit),
-                reps: '',
-              }));
-            }
-            workoutLog.initializeFromLastSession(exercises, converted);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch last weights:', err);
-      }
-    }
-
-    fetchLastWeights();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routine?.id, exercises.length]);
 
   if (!program) {
     return (

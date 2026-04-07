@@ -16,33 +16,28 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Get session
-  const { data: session, error: sessionError } = await supabase
+  // Single query with nested select
+  const { data: session, error } = await supabase
     .from('workout_sessions')
-    .select('*')
+    .select('*, set_logs(*)')
     .eq('id', id)
     .eq('user_id', user.id)
     .single();
 
-  if (sessionError) {
-    return NextResponse.json({ error: sessionError.message }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  // Get set logs
-  const { data: setLogs, error: logsError } = await supabase
-    .from('set_logs')
-    .select('*')
-    .eq('session_id', id)
-    .order('exercise_name')
-    .order('set_number');
-
-  if (logsError) {
-    return NextResponse.json({ error: logsError.message }, { status: 500 });
-  }
+  // Sort set_logs by exercise_name then set_number
+  const setLogs = (session.set_logs || []).sort((a: { exercise_name: string; set_number: number }, b: { exercise_name: string; set_number: number }) =>
+    a.exercise_name === b.exercise_name
+      ? a.set_number - b.set_number
+      : a.exercise_name.localeCompare(b.exercise_name)
+  );
 
   return NextResponse.json({
     ...session,

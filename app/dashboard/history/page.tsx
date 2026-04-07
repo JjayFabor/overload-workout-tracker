@@ -1,33 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { DAYS } from '@/lib/program';
-import { DayKey, WorkoutSession } from '@/lib/types';
+import useSWR from 'swr';
+import { WorkoutSession } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useActiveProgram } from '@/hooks/useActiveProgram';
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function HistoryPage() {
-  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchSessions() {
-      try {
-        const res = await fetch('/api/sessions');
-        if (res.ok) {
-          const data = await res.json();
-          setSessions(data || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch sessions:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchSessions();
-  }, []);
+  const { program } = useActiveProgram();
+  const { data: sessions = [], isLoading } = useSWR<WorkoutSession[]>(
+    '/api/sessions',
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30000 }
+  );
 
   // Group sessions by month
   const groupedSessions = sessions.reduce(
@@ -52,7 +40,7 @@ export default function HistoryPage() {
       <PageHeader title="History" />
 
       <div className="mx-auto max-w-lg px-4 py-4">
-        {loading ? (
+        {isLoading ? (
           <p className="text-center text-gray-500">Loading...</p>
         ) : sessions.length === 0 ? (
           <p className="text-center text-gray-500">No workout history yet</p>
@@ -64,7 +52,9 @@ export default function HistoryPage() {
               </h2>
               <div className="space-y-3">
                 {monthSessions.map((session) => {
-                  const day = DAYS[session.day_key as DayKey];
+                  const routine = program?.routines.find((r) => r.id === session.routine_id);
+                  const accent = routine?.accent || '#7F77DD';
+                  const short = routine?.short || session.day_name?.charAt(0) || '?';
                   return (
                     <Link
                       key={session.id}
@@ -74,9 +64,9 @@ export default function HistoryPage() {
                       <div className="flex items-center gap-3">
                         <div
                           className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
-                          style={{ backgroundColor: day?.accent || '#7F77DD' }}
+                          style={{ backgroundColor: accent }}
                         >
-                          {day?.short.slice(0, 2)}
+                          {short.slice(0, 2)}
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">
