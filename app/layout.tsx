@@ -13,13 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Workout Tracker',
-  description: 'jjayfabor V-taper program tracker',
+  title: 'Overload',
+  description: 'Progressive overload workout tracker',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Workout Tracker',
+    title: 'Overload',
+  },
+  icons: {
+    icon: '/icons/overload-logo.png',
+    apple: '/icons/overload-logo.png',
   },
 };
 
