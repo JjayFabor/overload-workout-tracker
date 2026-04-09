@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { CircleProgress } from '@/components/ui/CircleProgress';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { RestTimer } from '@/components/workout/RestTimer';
-import { useTimer, DEFAULT_REST_SECONDS } from '@/hooks/useTimer';
+import { useTimer, DEFAULT_REST_SECONDS, requestNotificationPermission } from '@/hooks/useTimer';
 import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 import { routineToExercises, useActiveProgram } from '@/hooks/useActiveProgram';
 import { WeightUnit, inputToKg, kgToDisplay } from '@/hooks/useWeightUnit';
@@ -37,6 +37,11 @@ export default function WorkoutPage({ params }: PageProps) {
   const [prefilled, setPrefilled] = useState(false);
 
   const timer = useTimer();
+
+  // Ask for notification permission so the timer can alert when backgrounded
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   // Derive routine and exercises from program context (no extra fetch)
   const routine: Routine | null = useMemo(() => {
