@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
-import { ProgramWithRoutines } from '@/lib/types';
-import { ACCENT_COLORS, DAY_OPTIONS } from '@/lib/program';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { useEffect, useState, use } from "react";
+import { useRouter } from "next/navigation";
+import { pushThenRefresh } from "@/lib/clientNavigate";
+import { ProgramWithRoutines } from "@/lib/types";
+import { ACCENT_COLORS, DAY_OPTIONS } from "@/lib/program";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 interface ExerciseForm {
   name: string;
@@ -29,8 +30,8 @@ interface PageProps {
 export default function EditProgramPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const [programName, setProgramName] = useState('');
-  const [description, setDescription] = useState('');
+  const [programName, setProgramName] = useState("");
+  const [description, setDescription] = useState("");
   const [routines, setRoutines] = useState<RoutineForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,7 +43,7 @@ export default function EditProgramPage({ params }: PageProps) {
         if (res.ok) {
           const program: ProgramWithRoutines = await res.json();
           setProgramName(program.name);
-          setDescription(program.description || '');
+          setDescription(program.description || "");
           setRoutines(
             program.routines.map((r) => ({
               id: r.id,
@@ -56,11 +57,11 @@ export default function EditProgramPage({ params }: PageProps) {
                 reps: ex.reps,
                 rest_seconds: ex.rest_seconds,
               })),
-            }))
+            })),
           );
         }
       } catch (err) {
-        console.error('Failed to fetch program:', err);
+        console.error("Failed to fetch program:", err);
       } finally {
         setLoading(false);
       }
@@ -74,7 +75,7 @@ export default function EditProgramPage({ params }: PageProps) {
       {
         label: `Day ${routines.length + 1}`,
         short: `D${routines.length + 1}`,
-        name: '',
+        name: "",
         accent: ACCENT_COLORS[routines.length % ACCENT_COLORS.length],
         exercises: [],
       },
@@ -84,14 +85,21 @@ export default function EditProgramPage({ params }: PageProps) {
   const handleRemoveRoutine = (index: number) => {
     const routine = routines[index];
     if (routine.id) {
-      if (!confirm('Delete this routine? Exercises inside will also be deleted.')) return;
+      if (
+        !confirm("Delete this routine? Exercises inside will also be deleted.")
+      )
+        return;
     }
     setRoutines(routines.filter((_, i) => i !== index));
   };
 
-  const updateRoutine = (index: number, field: keyof RoutineForm, value: string) => {
+  const updateRoutine = (
+    index: number,
+    field: keyof RoutineForm,
+    value: string,
+  ) => {
     setRoutines((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)),
     );
   };
 
@@ -99,9 +107,15 @@ export default function EditProgramPage({ params }: PageProps) {
     setRoutines((prev) =>
       prev.map((r, i) =>
         i === routineIndex
-          ? { ...r, exercises: [...r.exercises, { name: '', sets: 2, reps: '8-12', rest_seconds: 90 }] }
-          : r
-      )
+          ? {
+              ...r,
+              exercises: [
+                ...r.exercises,
+                { name: "", sets: 2, reps: "8-12", rest_seconds: 90 },
+              ],
+            }
+          : r,
+      ),
     );
   };
 
@@ -110,8 +124,8 @@ export default function EditProgramPage({ params }: PageProps) {
       prev.map((r, i) =>
         i === routineIndex
           ? { ...r, exercises: r.exercises.filter((_, j) => j !== exIndex) }
-          : r
-      )
+          : r,
+      ),
     );
   };
 
@@ -119,7 +133,7 @@ export default function EditProgramPage({ params }: PageProps) {
     routineIndex: number,
     exIndex: number,
     field: string,
-    value: string | number
+    value: string | number,
   ) => {
     setRoutines((prev) =>
       prev.map((r, i) =>
@@ -127,11 +141,11 @@ export default function EditProgramPage({ params }: PageProps) {
           ? {
               ...r,
               exercises: r.exercises.map((ex, j) =>
-                j === exIndex ? { ...ex, [field]: value } : ex
+                j === exIndex ? { ...ex, [field]: value } : ex,
               ),
             }
-          : r
-      )
+          : r,
+      ),
     );
   };
 
@@ -142,8 +156,8 @@ export default function EditProgramPage({ params }: PageProps) {
     try {
       // Update program metadata
       await fetch(`/api/programs/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: programName, description }),
       });
 
@@ -152,8 +166,8 @@ export default function EditProgramPage({ params }: PageProps) {
         if (routine.id) {
           // Update existing routine
           await fetch(`/api/programs/${id}/routines/${routine.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               label: routine.label,
               short: routine.short,
@@ -165,8 +179,8 @@ export default function EditProgramPage({ params }: PageProps) {
         } else {
           // Create new routine
           await fetch(`/api/programs/${id}/routines`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               label: routine.label,
               short: routine.short,
@@ -186,16 +200,15 @@ export default function EditProgramPage({ params }: PageProps) {
         for (const existing of current.routines) {
           if (!keptIds.includes(existing.id)) {
             await fetch(`/api/programs/${id}/routines/${existing.id}`, {
-              method: 'DELETE',
+              method: "DELETE",
             });
           }
         }
       }
 
-      router.push('/dashboard/programs');
-      router.refresh();
+      pushThenRefresh(router, "/dashboard/programs");
     } catch (err) {
-      console.error('Failed to save program:', err);
+      console.error("Failed to save program:", err);
     } finally {
       setSaving(false);
     }
@@ -250,23 +263,29 @@ export default function EditProgramPage({ params }: PageProps) {
                   <select
                     value={routine.label}
                     onChange={(e) => {
-                      const day = DAY_OPTIONS.find((d) => d.label === e.target.value);
+                      const day = DAY_OPTIONS.find(
+                        (d) => d.label === e.target.value,
+                      );
                       if (day) {
-                        updateRoutine(rIdx, 'label', day.label);
-                        updateRoutine(rIdx, 'short', day.short);
+                        updateRoutine(rIdx, "label", day.label);
+                        updateRoutine(rIdx, "short", day.short);
                       }
                     }}
                     className="w-1/3 rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#7F77DD] focus:outline-none"
                   >
                     {DAY_OPTIONS.map((day) => (
-                      <option key={day.label} value={day.label}>{day.label}</option>
+                      <option key={day.label} value={day.label}>
+                        {day.label}
+                      </option>
                     ))}
                   </select>
                   <input
                     type="text"
                     placeholder="Name (e.g. Push)"
                     value={routine.name}
-                    onChange={(e) => updateRoutine(rIdx, 'name', e.target.value)}
+                    onChange={(e) =>
+                      updateRoutine(rIdx, "name", e.target.value)
+                    }
                     className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#7F77DD] focus:outline-none"
                   />
                 </div>
@@ -274,8 +293,18 @@ export default function EditProgramPage({ params }: PageProps) {
                   onClick={() => handleRemoveRoutine(rIdx)}
                   className="ml-2 text-red-400 hover:text-red-600"
                 >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -285,9 +314,11 @@ export default function EditProgramPage({ params }: PageProps) {
                 {ACCENT_COLORS.map((color) => (
                   <button
                     key={color}
-                    onClick={() => updateRoutine(rIdx, 'accent', color)}
+                    onClick={() => updateRoutine(rIdx, "accent", color)}
                     className={`h-6 w-6 rounded-full border-2 ${
-                      routine.accent === color ? 'border-gray-900' : 'border-transparent'
+                      routine.accent === color
+                        ? "border-gray-900"
+                        : "border-transparent"
                     }`}
                     style={{ backgroundColor: color }}
                   />
@@ -302,13 +333,22 @@ export default function EditProgramPage({ params }: PageProps) {
                       type="text"
                       placeholder="Exercise name"
                       value={ex.name}
-                      onChange={(e) => updateExercise(rIdx, eIdx, 'name', e.target.value)}
+                      onChange={(e) =>
+                        updateExercise(rIdx, eIdx, "name", e.target.value)
+                      }
                       className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-[#7F77DD] focus:outline-none"
                     />
                     <input
                       type="number"
                       value={ex.sets}
-                      onChange={(e) => updateExercise(rIdx, eIdx, 'sets', parseInt(e.target.value) || 2)}
+                      onChange={(e) =>
+                        updateExercise(
+                          rIdx,
+                          eIdx,
+                          "sets",
+                          parseInt(e.target.value) || 2,
+                        )
+                      }
                       className="w-12 rounded border border-gray-200 px-1 py-1 text-center text-sm focus:border-[#7F77DD] focus:outline-none"
                       min={1}
                     />
@@ -317,15 +357,27 @@ export default function EditProgramPage({ params }: PageProps) {
                       type="text"
                       placeholder="8-12"
                       value={ex.reps}
-                      onChange={(e) => updateExercise(rIdx, eIdx, 'reps', e.target.value)}
+                      onChange={(e) =>
+                        updateExercise(rIdx, eIdx, "reps", e.target.value)
+                      }
                       className="w-16 rounded border border-gray-200 px-1 py-1 text-center text-sm focus:border-[#7F77DD] focus:outline-none"
                     />
                     <button
                       onClick={() => removeExercise(rIdx, eIdx)}
                       className="text-red-300 hover:text-red-500"
                     >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -354,7 +406,7 @@ export default function EditProgramPage({ params }: PageProps) {
           disabled={saving || !programName.trim()}
           className="mt-6 w-full rounded-xl bg-[#7F77DD] py-4 text-lg font-semibold text-white transition-opacity hover:bg-[#6B63C9] disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Save Changes'}
+          {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
     </>

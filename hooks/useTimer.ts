@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const DEFAULT_REST_SECONDS = 180; // 3 minutes
 
@@ -12,26 +12,34 @@ interface UseTimerReturn {
   stop: () => void;
   reset: () => void;
   adjustTime: (delta: number) => void;
+  resumeFromDeadline: (endMs: number, totalSecs: number) => void;
+  getEndTimeMs: () => number | null;
 }
 
-function notifyTimerDone() {
+export function notifyRestTimerDone() {
   // Vibrate if supported (mobile)
   if (navigator.vibrate) {
     navigator.vibrate([200, 100, 200, 100, 200]);
   }
 
   // Send a notification if permission was granted
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    new Notification('Rest Timer Done', {
-      body: 'Time to start your next set!',
-      icon: '/icons/overload-logo.png',
-      tag: 'rest-timer', // replaces previous timer notifications
+  if (
+    typeof Notification !== "undefined" &&
+    Notification.permission === "granted"
+  ) {
+    new Notification("Rest Timer Done", {
+      body: "Time to start your next set!",
+      icon: "/icons/overload-logo.png",
+      tag: "rest-timer", // replaces previous timer notifications
     });
   }
 }
 
 export function requestNotificationPermission() {
-  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+  if (
+    typeof Notification !== "undefined" &&
+    Notification.permission === "default"
+  ) {
     Notification.requestPermission();
   }
 }
@@ -55,7 +63,7 @@ export function useTimer(): UseTimerReturn {
         endTimeRef.current = null;
         if (!notifiedRef.current) {
           notifiedRef.current = true;
-          notifyTimerDone();
+          notifyRestTimerDone();
         }
       } else {
         setSeconds(remaining);
@@ -69,23 +77,26 @@ export function useTimer(): UseTimerReturn {
 
     // Also re-sync when the tab becomes visible again
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') tick();
+      if (document.visibilityState === "visible") tick();
     };
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [isRunning]);
 
-  const start = useCallback((durationSeconds: number = DEFAULT_REST_SECONDS) => {
-    endTimeRef.current = Date.now() + durationSeconds * 1000;
-    notifiedRef.current = false;
-    setSeconds(durationSeconds);
-    setTotalSeconds(durationSeconds);
-    setIsRunning(true);
-  }, []);
+  const start = useCallback(
+    (durationSeconds: number = DEFAULT_REST_SECONDS) => {
+      endTimeRef.current = Date.now() + durationSeconds * 1000;
+      notifiedRef.current = false;
+      setSeconds(durationSeconds);
+      setTotalSeconds(durationSeconds);
+      setIsRunning(true);
+    },
+    [],
+  );
 
   const stop = useCallback(() => {
     setIsRunning(false);
@@ -109,6 +120,24 @@ export function useTimer(): UseTimerReturn {
     setTotalSeconds((prev) => Math.max(0, prev + delta));
   }, []);
 
+  const resumeFromDeadline = useCallback((endMs: number, totalSecs: number) => {
+    const remaining = Math.round((endMs - Date.now()) / 1000);
+    if (remaining <= 0) {
+      endTimeRef.current = null;
+      setSeconds(0);
+      setTotalSeconds(totalSecs > 0 ? totalSecs : 0);
+      setIsRunning(false);
+      return;
+    }
+    endTimeRef.current = endMs;
+    notifiedRef.current = false;
+    setTotalSeconds(totalSecs > 0 ? totalSecs : remaining);
+    setSeconds(remaining);
+    setIsRunning(true);
+  }, []);
+
+  const getEndTimeMs = useCallback(() => endTimeRef.current, []);
+
   return {
     seconds,
     isRunning,
@@ -117,6 +146,8 @@ export function useTimer(): UseTimerReturn {
     stop,
     reset,
     adjustTime,
+    resumeFromDeadline,
+    getEndTimeMs,
   };
 }
 
